@@ -7,30 +7,83 @@ import sys
 import os
 print(os.getcwd())
 
+from PyQt5.QtWidgets import QWidget
+from PyQt5.QtGui import QPainter, QColor
+from PyQt5.QtCore import QRectF, Qt
+
+from PyQt5.QtWidgets import QWidget
+from PyQt5.QtGui import QPainter, QColor, QPen
+from PyQt5.QtCore import QRectF, Qt
+
 class SmoothProgressBar(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.progress = 0.0  # 0.0 to 1.0
-        self.setMinimumHeight(10)
+        self.dragging = False
+        self.seek_callback = None
+        self.setMinimumHeight(20)
 
     def setProgress(self, value):
-        self.progress = max(0.0, min(1.0, value))
-        self.update()
+        if not self.dragging:  # Don't override while dragging
+            self.progress = max(0.0, min(1.0, value))
+            self.update()
+
+    def setSeekCallback(self, callback):
+        self.seek_callback = callback
 
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
 
+        bar_y = self.height() / 2 - 3
+
         # Background bar
-        bg_rect = QRectF(0, self.height()/2 - 3, self.width(), 6)
-        painter.setBrush(QColor(80, 80, 80))
+        bg_rect = QRectF(0, bar_y, self.width(), 6)
+        painter.setBrush(QColor(70, 70, 70))
         painter.setPen(Qt.NoPen)
         painter.drawRoundedRect(bg_rect, 3, 3)
 
         # Progress bar
-        fg_rect = QRectF(0, self.height()/2 - 3, self.width() * self.progress, 6)
+        fg_rect = QRectF(0, bar_y, self.width() * self.progress, 6)
         painter.setBrush(QColor(0, 180, 255))
         painter.drawRoundedRect(fg_rect, 3, 3)
+
+        # Draggable circle
+        circle_x = self.width() * self.progress
+        circle_radius = 7
+        painter.setBrush(QColor(255, 255, 255))
+        painter.setPen(QPen(Qt.black, 1))
+
+        rect = QRectF(
+            circle_x - circle_radius,
+            bar_y - 4,
+            circle_radius * 2,
+            circle_radius * 2
+        )
+
+        painter.drawEllipse(rect)
+
+    def mousePressEvent(self, event):
+        self.dragging = True
+        self._update_drag(event.x())
+
+    def mouseMoveEvent(self, event):
+        if self.dragging:
+            self._update_drag(event.x())
+
+    def mouseReleaseEvent(self, event):
+        if self.dragging:
+            self.dragging = False
+            self._update_drag(event.x(), final=True)
+
+    def _update_drag(self, x, final=False):
+        width = self.width()
+        ratio = max(0.0, min(1.0, x / width))
+        self.progress = ratio
+        self.update()
+
+        if final and self.seek_callback:
+            self.seek_callback(ratio)
 
 class Window(QWidget):
     def __init__(self):
@@ -51,6 +104,7 @@ class Window(QWidget):
 
         self.openBtn = QPushButton('Open file')
         self.openBtn.clicked.connect(self.open_file)
+        self.openBtn.setFixedSize(96, 32)
         
         # Build absolute paths with forward slashes (Qt requires this)
         base = os.path.dirname(__file__).replace("\\", "/")
@@ -98,6 +152,7 @@ class Window(QWidget):
 
         #self.slider = QSlider(Qt.Horizontal)
         self.slider = SmoothProgressBar()
+        self.slider.setSeekCallback(self.seek_to_ratio)
         self.smoothTimer = QTimer()
         self.smoothTimer.timeout.connect(self.update_smooth_progress)
         self.smoothTimer.start(16)  # ~60 FPS
@@ -109,12 +164,13 @@ class Window(QWidget):
 
         hbox.addWidget(self.openBtn)
         hbox.addWidget(self.playBtn)
-        hbox.addWidget(self.slider)
+        
 
         vbox = QVBoxLayout()
-        vbox.addWidget(videowidget)
-        vbox.addLayout(hbox)
-
+        vbox.addWidget(videowidget, stretch=1)
+        vbox.addWidget(self.slider)
+        vbox.addLayout(hbox, stretch=0)  
+        #vbox.addSpacing()
         self.mediaPlayer.setVideoOutput(videowidget)
 
         self.setLayout(vbox)
@@ -142,10 +198,18 @@ class Window(QWidget):
             self.playBtn.setStyleSheet(self.play_stylesheet)
 
     def update_smooth_progress(self):
-        if self.mediaPlayer.duration() > 0:
-            real_progress = self.mediaPlayer.position() / self.mediaPlayer.duration()
-            self.slider.setProgress(real_progress)
+        duration = self.mediaPlayer.duration()
+        if duration > 0:
+            ratio = self.mediaPlayer.position() / duration
+            self.slider.setProgress(ratio)
     
+    def seek_to_ratio(self, ratio):
+        duration = self.mediaPlayer.duration()
+        if duration > 0:
+            new_pos = int(duration * ratio)
+            self.mediaPlayer.setPosition(new_pos)
+
+
     #def position_changed(self, position):
     #    self.slider.setValue(position)
     
