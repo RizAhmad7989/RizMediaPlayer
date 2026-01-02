@@ -106,6 +106,7 @@ class Window(QWidget):
         self.openBtn.clicked.connect(self.open_file)
         self.openBtn.setFixedSize(96, 32)
         
+        
         # Build absolute paths with forward slashes (Qt requires this)
         base = os.path.dirname(__file__).replace("\\", "/")
 
@@ -184,6 +185,7 @@ class Window(QWidget):
         if filename != '':
             self.mediaPlayer.setMedia(QMediaContent(QUrl.fromLocalFile(filename)))
             self.playBtn.setEnabled(True)
+            self.mediaPlayer.play()
     
     def play_media(self):
         if self.mediaPlayer.state() == QMediaPlayer.PlayingState:
