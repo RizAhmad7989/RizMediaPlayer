@@ -82,7 +82,7 @@ class SmoothProgressBar(QWidget):
         self.progress = ratio
         self.update()
 
-        if final and self.seek_callback:
+        if self.seek_callback:
             self.seek_callback(ratio)
 
 class Window(QWidget):
@@ -201,7 +201,7 @@ class Window(QWidget):
 
     def update_smooth_progress(self):
         duration = self.mediaPlayer.duration()
-        if duration > 0:
+        if duration > 0 and not self.slider.dragging: #when user not moving slider
             ratio = self.mediaPlayer.position() / duration
             self.slider.setProgress(ratio)
     
