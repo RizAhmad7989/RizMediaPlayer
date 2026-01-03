@@ -6,6 +6,7 @@ from PyQt5.QtCore import Qt, QUrl, QSize, QTimer, QPropertyAnimation, QEasingCur
 import sys
 import os
 from SmoothProgressBar import SmoothProgressBar
+from Visualiser import Visualiser
 
 class Window(QWidget):
     def __init__(self):
@@ -48,6 +49,8 @@ class Window(QWidget):
         self.create_player()
     
     def create_player(self):
+        self.visualiser = Visualiser()
+        self.visualiser.hide() #hide till audio file detected
         self.mediaPlayer = QMediaPlayer(None, QMediaPlayer.VideoSurface)
         videowidget = QVideoWidget()
         #want a play button, stop button, skip 5sec, go back 5sec, open file
@@ -119,9 +122,12 @@ class Window(QWidget):
         self.menu_bar.addMenu(self.view_menu)
 
         vbox.addWidget(videowidget, stretch=1)
+        vbox.addWidget(self.visualiser)
+
+        self.mediaPlayer.videoAvailableChanged.connect(self.on_video_available)
+        
         vbox.addWidget(self.slider)
         vbox.addLayout(hbox, stretch=0)  
-        #vbox.addSpacing()
         self.mediaPlayer.setVideoOutput(videowidget)
 
         self.setLayout(vbox)
@@ -130,6 +136,7 @@ class Window(QWidget):
 
     
     def open_file(self):
+        #self.visualiser.hide()
         was_playing = self.mediaPlayer.state() == QMediaPlayer.PlayingState
         self.mediaPlayer.pause()
         filename, _ = QFileDialog.getOpenFileName(self, "Open Media")
@@ -264,6 +271,12 @@ class Window(QWidget):
             self.anim.finished.connect(finished_callback)
         
         self.anim.start()
+
+    def on_video_available(self, available):
+        if available:
+            self.visualiser.hide()
+        else:
+            self.visualiser.show()
 
 
 app = QApplication(sys.argv)
