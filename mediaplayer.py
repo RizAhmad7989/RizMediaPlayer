@@ -1,104 +1,11 @@
-from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QHBoxLayout, QVBoxLayout, QFileDialog
-from PyQt5.QtGui import QIcon, QPainter, QColor, QPen
+from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QHBoxLayout, QVBoxLayout, QFileDialog, QMenuBar, QMenu, QAction
+from PyQt5.QtGui import QIcon, QKeySequence
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 from PyQt5.QtMultimediaWidgets import QVideoWidget
-from PyQt5.QtCore import Qt, QUrl, QSize, QRectF, QTimer, QPropertyAnimation, QEasingCurve
+from PyQt5.QtCore import Qt, QUrl, QSize, QTimer, QPropertyAnimation, QEasingCurve, QCoreApplication
 import sys
 import os
-
-from PyQt5.QtWidgets import QWidget
-from PyQt5.QtGui import QPainter, QColor
-from PyQt5.QtCore import QRectF, Qt
-
-
-class SmoothProgressBar(QWidget):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.progress = 0.0  # 0.0 to 1.0
-        self.dragging = False
-        self.seek_callback = None
-        self.setMinimumHeight(30)
-        self.drag_start_callback = None
-        self.drag_end_callback = None
-        
-
-    def setProgress(self, value):
-        if not self.dragging:  #don't override while dragging
-            self.progress = max(0.0, min(1.0, value))
-            self.update()
-
-    def setSeekCallback(self, callback):
-        self.seek_callback = callback
-
-    def setDragStartCallback(self, callback):
-        self.drag_start_callback = callback
-
-    def setDragEndCallback(self, callback):
-        self.drag_end_callback = callback
-
-    def paintEvent(self, event):
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
-
-        bar_y = self.height() / 2 - 3
-
-        # Background bar
-        bg_rect = QRectF(0, bar_y, self.width() - 1, 6)
-        painter.setBrush(QColor(70, 70, 70))
-        painter.setPen(Qt.NoPen)
-        painter.drawRoundedRect(bg_rect, 3, 3)
-
-        # Progress bar
-        fg_rect = QRectF(0, bar_y, self.width() * self.progress - 1, 6)
-        painter.setBrush(QColor(191, 64, 191))
-        painter.drawRoundedRect(fg_rect, 3, 3)
-
-        # Draggable circle
-        circle_x = self.width() * self.progress
-        circle_radius = 10
-
-        circle_y = (self.height() - circle_radius * 2) / 2
-
-        # Clamp so the circle stays fully inside the bar
-        circle_x = max(circle_radius, min(self.width() - circle_radius - 1, circle_x))
-
-        painter.setBrush(QColor(255, 255, 255))
-        painter.setPen(QPen(Qt.black, 1))
-
-        rect = QRectF(
-            circle_x - circle_radius, 
-            circle_y,
-            circle_radius * 2,
-            circle_radius * 2
-        )
-
-        painter.drawEllipse(rect)
-
-    def mousePressEvent(self, event):
-        self.dragging = True
-        if self.drag_start_callback:
-            self.drag_start_callback()
-        self._update_drag(event.x())
-
-    def mouseMoveEvent(self, event):
-        if self.dragging:
-            self._update_drag(event.x())
-
-    def mouseReleaseEvent(self, event):
-        self.dragging = False
-        self._update_drag(event.x())
-        if self.drag_end_callback:
-            self.drag_end_callback()
-
-
-    def _update_drag(self, x, final=False):
-        width = self.width()
-        ratio = max(0.0, min(1.0, x / width))
-        self.progress = ratio
-        self.update()
-
-        if self.seek_callback:
-            self.seek_callback(ratio)
+from SmoothProgressBar import SmoothProgressBar
 
 class Window(QWidget):
     def __init__(self):
@@ -112,19 +19,41 @@ class Window(QWidget):
         self.setWindowTitle("Riz Media Player")
         self.setGeometry(350, 100, 1200, 800)
 
+        self.menu_bar = QMenuBar(self)
+
+        #File Menu
+        self.file_menu = QMenu("File", self)
+        self.open_action = QAction("Open File", self)
+        self.open_action.setShortcut(QKeySequence.Open)
+        self.help_action = QAction("Help", self)
+        self.help_action.setShortcut(Qt.CTRL+Qt.Key_H)
+        self.exit_action = QAction("Exit", self)
+        self.exit_action.setShortcut(QKeySequence.Close)
+        self.file_menu.addActions([self.open_action, self.help_action])
+        self.file_menu.addSeparator()
+        self.file_menu.addAction(self.exit_action)
+
+        self.open_action.triggered.connect(self.open_file)
+        self.exit_action.triggered.connect(QCoreApplication.instance().quit)
+
+        #View Menu
+        self.view_menu = QMenu("View", self)
+        self.fullscreen_action = QAction("Fullscreen", self)
+        self.fullscreen_action.setShortcut(Qt.Key_F)
+        self.view_menu.addActions([self.fullscreen_action])
+
+        self.fullscreen_action.setCheckable(True)
+        self.fullscreen_action.triggered.connect(self.toggle_fullscreen)
+        
         self.create_player()
     
     def create_player(self):
         self.mediaPlayer = QMediaPlayer(None, QMediaPlayer.VideoSurface)
         videowidget = QVideoWidget()
         #want a play button, stop button, skip 5sec, go back 5sec, open file
-
-        self.openBtn = QPushButton('Open file')
-        self.openBtn.clicked.connect(self.open_file)
-        self.openBtn.setFixedSize(96, 32)
         
         
-        # Build absolute paths with forward slashes (Qt requires this)
+        #absolute paths with forward slashes
         base = os.path.dirname(__file__).replace("\\", "/")
 
         self.play_normal = f"{base}/assets/png/playbtn.png"
@@ -168,7 +97,7 @@ class Window(QWidget):
         self.playBtn.setStyleSheet(self.play_stylesheet)        
         self.playBtn.clicked.connect(self.play_media)
         
-        self.slider = SmoothProgressBar()
+        self.slider = SmoothProgressBar(self)
         self.slider.setSeekCallback(self.seek_to_ratio)
         self.smoothTimer = QTimer()
         self.smoothTimer.timeout.connect(self.update_smooth_progress)
@@ -180,11 +109,15 @@ class Window(QWidget):
         hbox = QHBoxLayout()
         hbox.setContentsMargins(0,0,0,0)
 
-        hbox.addWidget(self.openBtn)
         hbox.addWidget(self.playBtn)
         
 
         vbox = QVBoxLayout()
+        
+        vbox.setMenuBar(self.menu_bar)
+        self.menu_bar.addMenu(self.file_menu)
+        self.menu_bar.addMenu(self.view_menu)
+
         vbox.addWidget(videowidget, stretch=1)
         vbox.addWidget(self.slider)
         vbox.addLayout(hbox, stretch=0)  
@@ -271,6 +204,7 @@ class Window(QWidget):
 
             case Qt.Key_Left:
                 self.skip_seconds(-5)
+                
                 event.accept()
             
             case Qt.Key_Right:
@@ -295,7 +229,9 @@ class Window(QWidget):
     
     def skip_seconds(self, seconds):
         pos = self.mediaPlayer.position()
-        new_pos = max(0, pos + seconds * 1000)
+        duration = self.mediaPlayer.duration()
+
+        new_pos = max(0, min(pos + seconds * 1000, duration))
         self.mediaPlayer.setPosition(new_pos)
     
     def toggle_fullscreen(self):
@@ -324,8 +260,6 @@ class Window(QWidget):
         
         self.anim.start()
 
-
-       
 
 app = QApplication(sys.argv)
 window = Window()
