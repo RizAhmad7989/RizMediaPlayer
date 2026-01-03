@@ -164,8 +164,8 @@ class Window(QWidget):
         import time
         now = time.time()
 
-        # Limit seeks to ~30 FPS
-        if now - self.last_seek_time < 1/30:
+        #limit seeks to around 10 FPS
+        if now - self.last_seek_time < 1/10:
             return
 
         self.last_seek_time = now
@@ -180,6 +180,11 @@ class Window(QWidget):
         self.mediaPlayer.pause()
 
     def on_drag_end(self):
+        duration = self.mediaPlayer.duration()
+        if duration > 0:
+            final_ratio = self.slider.getProgress()
+            self.mediaPlayer.setPosition(int(duration * final_ratio))
+
         if self.was_playing:
             self.mediaPlayer.play()
     

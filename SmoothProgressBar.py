@@ -12,6 +12,9 @@ class SmoothProgressBar(QWidget):
         self.setMinimumHeight(30)
         self.drag_start_callback = None
         self.drag_end_callback = None
+
+    def getProgress(self):
+        return self.progress
         
 
     def setProgress(self, value):
