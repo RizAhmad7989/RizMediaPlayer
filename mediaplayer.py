@@ -139,7 +139,14 @@ class Window(QWidget):
         #self.visualiser.hide()
         was_playing = self.mediaPlayer.state() == QMediaPlayer.PlayingState
         self.mediaPlayer.pause()
-        filename, _ = QFileDialog.getOpenFileName(self, "Open Media")
+        filename, _ = QFileDialog.getOpenFileName(
+            self, 
+            "Open Media",
+            "",
+            "Audio/Video Files (*.mp3 *.wav *.flac *.aac *.ogg *.m4a *.mp4 *.avi *.mov *.wmv *.webm);;"
+            "Audio Files (*.mp3 *.wav *.flac *.aac *.ogg *.m4a);;"
+            "Video Files (*.mp4 *.avi *.mov *.wmv *.webm)"
+        )
 
         if filename != '':
             self.mediaPlayer.setMedia(QMediaContent(QUrl.fromLocalFile(filename)))
