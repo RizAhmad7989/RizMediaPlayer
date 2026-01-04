@@ -7,6 +7,7 @@ import sys
 import os
 from SmoothProgressBar import SmoothProgressBar
 from Visualiser import Visualiser
+from ClickableVideoWidget import ClickableVideoWidget
 
 class Window(QWidget):
     def __init__(self):
@@ -52,7 +53,7 @@ class Window(QWidget):
         self.visualiser = Visualiser()
         self.visualiser.hide() #hide till audio file detected
         self.mediaPlayer = QMediaPlayer(None, QMediaPlayer.VideoSurface)
-        videowidget = QVideoWidget()
+        videowidget = ClickableVideoWidget(self)
         #want a play button, stop button, skip 5sec, go back 5sec, open file
         
         
