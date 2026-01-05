@@ -61,23 +61,13 @@ class Window(QWidget):
         base = os.path.dirname(__file__).replace("\\", "/")
 
         self.play_normal = f"{base}/assets/png/playbtn.png"
-        self.play_hover = f"{base}/assets/png/playbtn_hover.png"
-        self.play_pressed = f"{base}/assets/png/playbtn_pressed.png"
-
         self.pause_normal = f"{base}/assets/png/pausebtn.png"
-        self.pause_hover = f"{base}/assets/png/pausebtn_hover.png"
-        self.pause_pressed = f"{base}/assets/png/pausebtn_pressed.png"
+        self.stop_normal = f"{base}/assets/png/stopbtn.png"
 
         self.play_stylesheet = f"""QPushButton {{
             border: none;
             background: transparent;
             qproperty-icon: url({self.play_normal});
-        }}
-        QPushButton:hover {{
-            qproperty-icon: url({self.play_hover});
-        }}
-        QPushButton:pressed {{
-            qproperty-icon: url({self.play_pressed});
         }}
         """
 
@@ -86,11 +76,12 @@ class Window(QWidget):
             background: transparent;
             qproperty-icon: url({self.pause_normal});
         }}
-        QPushButton:hover {{
-            qproperty-icon: url({self.pause_hover});
-        }}
-        QPushButton:pressed {{
-            qproperty-icon: url({self.pause_pressed});
+        """
+
+        self.stop_stylesheet = f"""QPushButton {{
+            border: none;
+            background: transparent;
+            qproperty-icon: url({self.stop_normal});
         }}
         """
 
@@ -100,6 +91,13 @@ class Window(QWidget):
         self.playBtn.setEnabled(False)
         self.playBtn.setStyleSheet(self.play_stylesheet)        
         self.playBtn.clicked.connect(self.play_media)
+
+        self.stopBtn = QPushButton()
+        self.stopBtn.setFixedSize(32,32)
+        self.stopBtn.setIconSize(QSize(32,32))
+        self.stopBtn.setEnabled(False)
+        self.stopBtn.setStyleSheet(self.stop_stylesheet)
+        self.stopBtn.clicked.connect(self.stop_media)
         
         self.slider = SmoothProgressBar(self)
         self.slider.setSeekCallback(self.seek_to_ratio)
@@ -109,13 +107,12 @@ class Window(QWidget):
         self.slider.setDragStartCallback(self.on_drag_start)
         self.slider.setDragEndCallback(self.on_drag_end)
 
-
         hbox = QHBoxLayout()
         hbox.setContentsMargins(0,0,0,0)
 
         hbox.addWidget(self.playBtn)
+        hbox.addWidget(self.stopBtn)
         
-
         vbox = QVBoxLayout()
         
         vbox.setMenuBar(self.menu_bar)
@@ -152,6 +149,7 @@ class Window(QWidget):
         if filename != '':
             self.mediaPlayer.setMedia(QMediaContent(QUrl.fromLocalFile(filename)))
             self.playBtn.setEnabled(True)
+            self.stopBtn.setEnabled(True)
             self.mediaPlayer.play()
 
         if was_playing:
@@ -162,6 +160,13 @@ class Window(QWidget):
             self.mediaPlayer.pause()
         else:
             self.mediaPlayer.play()
+
+    def stop_media(self):
+        self.mediaPlayer.stop()
+        self.mediaPlayer.setPosition(0)
+        self.slider.setProgress(0)
+        self.playBtn.setStyleSheet(self.play_stylesheet)
+
 
     def mediastate_changed(self, state):
         if self.mediaPlayer.state() == QMediaPlayer.PlayingState:
